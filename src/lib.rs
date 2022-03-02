@@ -1,6 +1,7 @@
 pub mod arp;
 pub mod ethernet;
 pub mod icmp;
+pub mod icmpv6;
 pub mod ip;
 pub mod ipv4;
 pub mod ipv6;
