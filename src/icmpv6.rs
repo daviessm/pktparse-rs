@@ -256,7 +256,41 @@ fn parse_icmpv6_code(input: &[u8]) -> IResult<&[u8], Icmpv6Code> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Icmpv6Data {
+    EchoRequest {
+        identifier: u16,
+        sequence: u16,
+    },
+    EchoReply {
+        identifier: u16,
+        sequence: u16,
+    },
     None,
+}
+
+fn parse_echo_request(input: &[u8]) -> IResult<&[u8], Icmpv6Data> {
+    let (input, identifier) = number::streaming::be_u16(input)?;
+    let (input, sequence) = number::streaming::be_u16(input)?;
+
+    Ok((
+        input,
+        Icmpv6Data::EchoRequest {
+            identifier,
+            sequence,
+        }
+    ))
+}
+
+fn parse_echo_reply(input: &[u8]) -> IResult<&[u8], Icmpv6Data> {
+    let (input, identifier) = number::streaming::be_u16(input)?;
+    let (input, sequence) = number::streaming::be_u16(input)?;
+
+    Ok((
+        input,
+        Icmpv6Data::EchoReply {
+            identifier,
+            sequence,
+        }
+    ))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -272,6 +306,8 @@ pub fn parse_icmpv6_header(input: &[u8]) -> IResult<&[u8], Icmpv6Header> {
     let (input, checksum) = number::streaming::be_u16(input)?;
 
     let (input, data) = match code {
+        Icmpv6Code::EchoRequest => parse_echo_request(input)?,
+        Icmpv6Code::EchoReply => parse_echo_reply(input)?,
         _ => (input, Icmpv6Data::None),
     };
 
@@ -283,4 +319,71 @@ pub fn parse_icmpv6_header(input: &[u8]) -> IResult<&[u8], Icmpv6Header> {
             data,
         },
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::icmpv6::{Icmpv6Data, parse_icmpv6_header, Icmpv6Code, Icmpv6Header};
+
+    #[test]
+    fn icmpv6_ping_request() {
+        let mut icmpv6_data = [
+            0x80, //type
+            0x00, //code
+            0xfd, 0x00, //checksum
+            0x00, 0x01, //identifier
+            0x00, 0x1a, //sequence
+        ].to_vec(); //header
+
+        let echo_data: [u8; 56] = [
+            0xab, 0x11, 0x2b, 0x62, 0x00, 0x00, 0x00, 0x00, 0x07, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+            0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+            0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37 //data
+        ];
+
+        icmpv6_data.extend_from_slice(&echo_data);
+
+        assert_eq!(parse_icmpv6_header(&icmpv6_data), Ok((&echo_data[..],
+            Icmpv6Header {
+                code: Icmpv6Code::EchoRequest, 
+                checksum: 0xfd00, 
+                data: Icmpv6Data::EchoRequest {
+                    identifier: 1,
+                    sequence: 26,
+                }
+            })
+        ))
+    }
+
+    #[test]
+    fn icmpv6_ping_reply() {
+        let mut icmpv6_data = [
+            0x81, //type
+            0x00, //code
+            0xfc, 0x00, //checksum
+            0x00, 0x01, //identifier
+            0x00, 0x1a, //sequence
+        ].to_vec(); //header
+
+        let echo_data: [u8; 56] = [
+            0xab, 0x11, 0x2b, 0x62, 0x00, 0x00, 0x00, 0x00, 0x07, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+            0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+            0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37 //data
+        ];
+
+        icmpv6_data.extend_from_slice(&echo_data);
+
+        assert_eq!(parse_icmpv6_header(&icmpv6_data), Ok((&echo_data[..],
+            Icmpv6Header {
+                code: Icmpv6Code::EchoReply, 
+                checksum: 0xfc00, 
+                data: Icmpv6Data::EchoReply {
+                    identifier: 1,
+                    sequence: 26,
+                }
+            })
+        ))
+    }
 }
