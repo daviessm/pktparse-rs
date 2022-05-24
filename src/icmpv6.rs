@@ -5,7 +5,7 @@ use nom::{number, IResult};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum Unreachable {
+pub enum DestinationUnreachable {
     NoRouteToDestination,
     CommunicationAdministrativelyProhibited,
     BeyondScopeOfSourceAddress,
@@ -88,7 +88,7 @@ pub enum ExtendedEchoReply {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Icmpv6Code {
     //Error messages
-    DestinationUnreachable(Unreachable),
+    DestinationUnreachable(DestinationUnreachable),
     PacketTooBig,
     TimeExceeded(TimeExceeded),
     ParameterProblem(ParameterProblem),
@@ -141,14 +141,14 @@ impl From<u16> for Icmpv6Code {
         let [t, c] = raw.to_be_bytes();
         match t {
             0x01 => match c {
-                0x00 => Self::DestinationUnreachable(Unreachable::NoRouteToDestination),
-                0x01 => Self::DestinationUnreachable(Unreachable::CommunicationAdministrativelyProhibited),
-                0x02 => Self::DestinationUnreachable(Unreachable::BeyondScopeOfSourceAddress),
-                0x03 => Self::DestinationUnreachable(Unreachable::AddressUnreachable),
-                0x04 => Self::DestinationUnreachable(Unreachable::PortUnreachable),
-                0x05 => Self::DestinationUnreachable(Unreachable::SourceAddressFailedPolicy),
-                0x06 => Self::DestinationUnreachable(Unreachable::RejectRouteToDestination),
-                0x07 => Self::DestinationUnreachable(Unreachable::ErrorInSourceRoutingHeader),
+                0x00 => Self::DestinationUnreachable(DestinationUnreachable::NoRouteToDestination),
+                0x01 => Self::DestinationUnreachable(DestinationUnreachable::CommunicationAdministrativelyProhibited),
+                0x02 => Self::DestinationUnreachable(DestinationUnreachable::BeyondScopeOfSourceAddress),
+                0x03 => Self::DestinationUnreachable(DestinationUnreachable::AddressUnreachable),
+                0x04 => Self::DestinationUnreachable(DestinationUnreachable::PortUnreachable),
+                0x05 => Self::DestinationUnreachable(DestinationUnreachable::SourceAddressFailedPolicy),
+                0x06 => Self::DestinationUnreachable(DestinationUnreachable::RejectRouteToDestination),
+                0x07 => Self::DestinationUnreachable(DestinationUnreachable::ErrorInSourceRoutingHeader),
                 _ => Self::Other(raw),
             },
             0x02 => Self::PacketTooBig,
